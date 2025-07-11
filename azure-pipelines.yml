@@ -1,0 +1,34 @@
+trigger:
+- main
+
+pool:
+  name: Default
+
+variables:
+  GCS_BUCKET: 'marta-static-site-2025'
+
+steps:
+- task: DownloadSecureFile@1
+  name: GCP_KEY
+  inputs:
+    secureFile: 'massive-triumph-409318-2af659cf4636.json'
+
+- script: |
+    echo "Installing Google Cloud SDK..."
+    curl -sSL https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-442.0.0-linux-x86_64.tar.gz -o gcloud.tar.gz
+    tar -xzf gcloud.tar.gz
+    ./google-cloud-sdk/install.sh --quiet
+
+    echo "Authenticating with service account..."
+    ./google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "$(GCP_KEY.secureFilePath)"
+
+    echo "Setting project..."
+    ./google-cloud-sdk/bin/gcloud config set project massive-triumph-409318
+
+    # Optional: create updated index.html to confirm the update time
+    echo "<html><body><h1>Updated at $(date)</h1></body></html>" > index.html
+
+    echo "Uploading index.html..."
+    ./google-cloud-sdk/bin/gsutil cp index.html gs://$(GCS_BUCKET)/index.html
+
+  displayName: 'Upload index.html to GCS with gsutil'
